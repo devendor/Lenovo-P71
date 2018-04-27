@@ -88,6 +88,12 @@ xserver-config=/etc/X11/xorg.conf
 sh -c "/home/rferguson/code/scripts/nv-metamode-toggle.py n"
 ```
 
+*Settings > Sessions and Startup > Application autostart*
+
+I still haven't tamed the xsession startups tendency to pick it's own resolution so I have a 
+startup command to reset it back to what I want for an initial mode on starup.
+
+sh -c "sleep 4; /home/rferguson/code/scripts/nv-metamode-toggle.py 1"
 
 ## grub toggle for reasonable console size
 
