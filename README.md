@@ -131,6 +131,10 @@ nvidia_drm
 
 ## xorg.conf
 
+Note: If you find settings you prefer either via xrandr or nvidia-setting, you can find the 
+metamode via nvidia-settings -q CurrentMetaMode and add that to the semicolon delimited metamodes
+ string in xorg.conf.
+
 ```
 # Current xorg.conf Ubuntu 17.10 ubuntu studio / xfce on a P71 with 3840x2160 HD internal LCD on 
 # DFP-4 and Acer CB280HK on DFP-3.1 also 3860x2160.
