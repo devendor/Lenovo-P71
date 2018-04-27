@@ -215,3 +215,14 @@ Section "Extensions"
     Option         "Composite" "Enable"
 EndSection
 ```
+
+## Using nvidia without disabling the intel gpu
+
+If you do not want to be locked into using the nvidia GPU or want to use the intel for maybe some
+alternate screen, you can back out the performance mode setting in bios and try to merge in some
+of the work in the xorg.conf files found in the prime-select repo.
+  
+https://github.com/wildtruc/nvidia-prime-select
+
+This might be something I look into later to give myself better battery life on the road.
+
