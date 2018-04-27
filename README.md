@@ -232,3 +232,231 @@ https://github.com/wildtruc/nvidia-prime-select
 
 This might be something I look into later to give myself better battery life on the road.
 
+## efi
+
+The [EFI files](./efi) need to be on a vfat filesystem.
+
+*/etc/fstab*
+```bash
+root@mendota:~/code/p71# grep -v ^# /etc/fstab 
+/dev/mapper/vg00-studioRoot710 /               ext4    discard,noatime,nodiratime,errors=remount-ro 0       1
+UUID=6ace010c-da53-4a3e-91e9-5390dd87702e /boot           ext4    discard,noatime,nodiratime 0       2
+UUID=6E14-F181  /boot/efi       vfat    umask=0077      0       1
+UUID=D6D6-AB0D  /boot/efi-backup vfat umask=0077 0 1
+/dev/md127 none            swap    sw              0       0
+UUID=8b3633ee-cb02-445a-a1f9-a1f2fdb21bb7   /home/rferguson ext4    discard,noatime,nodiratime, errors=remount-ro 0 1
+```
+
+## disks
+
+Linux is on nvme0n1 and nvme1n1 and mostly raided with the exception of /boot/efi which is copied
+to an alternate /boot/efi-backup. 
+
+The nvme ssds are Samsung 960 evos which unfortunately are known to cause hangs.  The bootparam
+`nvme_core.default_ps_max_latency_us=0 ` seems to mitigate this and there is evidence of a fix in
+future kernels.
+
+The laptop came with windows home on a sata disk /dev/sda which can still boot by way of f12 
+/boot menu.
+
+*windows partitions sda*
+```bash
+root@mendota:/etc# fdisk -l /dev/sda
+Disk /dev/sda: 465.8 GiB, 500107862016 bytes, 976773168 sectors
+Units: sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 4096 bytes
+I/O size (minimum/optimal): 4096 bytes / 4096 bytes
+Disklabel type: gpt
+Disk identifier: 2A0554A8-BCD2-4CC9-9CFA-29A6578E25FF
+
+Device         Start       End   Sectors   Size Type
+/dev/sda1       2048    534527    532480   260M Plan 9 partition
+/dev/sda2     534528    567295     32768    16M Microsoft reserved
+/dev/sda3     567296 974725119 974157824 464.5G Microsoft basic data
+/dev/sda4  974725120 976773119   2048000  1000M Windows recovery environment
+root@mendota:/etc# sfdisk -d /dev/sda
+label: gpt
+label-id: 2A0554A8-BCD2-4CC9-9CFA-29A6578E25FF
+device: /dev/sda
+unit: sectors
+first-lba: 34
+last-lba: 976773134
+
+/dev/sda1 : start=        2048, size=      532480, type=C91818F9-8025-47AF-89D2-F030D7000C2C, uuid=2AFF8F19-29C0-414B-AE94-623907B43102, name="EFI system partition", attrs="RequiredPartition GUID:63"
+/dev/sda2 : start=      534528, size=       32768, type=E3C9E316-0B5C-4DB8-817D-F92DF00215AE, uuid=4D3ABB25-50BB-4A71-A47D-059A92A6225A, name="Microsoft reserved partition", attrs="GUID:63"
+/dev/sda3 : start=      567296, size=   974157824, type=EBD0A0A2-B9E5-4433-87C0-68B6B72699C7, uuid=E80C1F6C-0F0D-4787-953B-78B232B7567F, name="Basic data partition"
+/dev/sda4 : start=   974725120, size=     2048000, type=DE94BBA4-06D1-4D40-A16A-BFD50179D6AC, uuid=FF241BE5-7364-410C-B0F5-86F72AB90B58, name="Basic data partition", attrs="RequiredPartition GUID:63"
+```
+
+*Linux partitions nvme0n1 nvme1n1*
+```bash
+root@mendota:/etc# fdisk -l /dev/nvme0n1
+Disk /dev/nvme0n1: 465.8 GiB, 500107862016 bytes, 976773168 sectors
+Units: sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+Disklabel type: gpt
+Disk identifier: 6AA58D66-B1ED-46AD-B412-0AACDFCF6CF4
+
+Device            Start       End   Sectors   Size Type
+/dev/nvme0n1p1       34      2047      2014  1007K BIOS boot
+/dev/nvme0n1p2     2048    526335    524288   256M EFI System
+/dev/nvme0n1p3   526336   2623487   2097152     1G Linux RAID
+/dev/nvme0n1p4  2623488  36177919  33554432    16G Linux RAID
+/dev/nvme0n1p5 36177920 976773134 940595215 448.5G Linux RAID
+root@mendota:/etc# fdisk -l /dev/nvme1n1
+Disk /dev/nvme1n1: 465.8 GiB, 500107862016 bytes, 976773168 sectors
+Units: sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+Disklabel type: gpt
+Disk identifier: 6AA58D66-B1ED-46AD-B412-0AACDFCF6CF4
+
+Device            Start       End   Sectors   Size Type
+/dev/nvme1n1p1       34      2047      2014  1007K BIOS boot
+/dev/nvme1n1p2     2048    526335    524288   256M EFI System
+/dev/nvme1n1p3   526336   2623487   2097152     1G Linux RAID
+/dev/nvme1n1p4  2623488  36177919  33554432    16G Linux RAID
+/dev/nvme1n1p5 36177920 976773134 940595215 448.5G Linux RAID
+root@mendota:/etc# sfdisk -d /dev/nvme0n1
+label: gpt
+label-id: 6AA58D66-B1ED-46AD-B412-0AACDFCF6CF4
+device: /dev/nvme0n1
+unit: sectors
+first-lba: 34
+last-lba: 976773134
+
+/dev/nvme0n1p1 : start=          34, size=        2014, type=21686148-6449-6E6F-744E-656564454649, uuid=E33C60D8-C925-4D46-9FA8-7E25F4984BFE, name="BIOS boot partition"
+/dev/nvme0n1p2 : start=        2048, size=      524288, type=C12A7328-F81F-11D2-BA4B-00A0C93EC93B, uuid=2B612A39-119D-4759-9922-FA6844F15DEF, name="EFI System"
+/dev/nvme0n1p3 : start=      526336, size=     2097152, type=A19D880F-05FC-4D3B-A006-743F0F84911E, uuid=D3D15924-C248-4C26-87F1-4CC7FD202799, name="BOOT"
+/dev/nvme0n1p4 : start=     2623488, size=    33554432, type=A19D880F-05FC-4D3B-A006-743F0F84911E, uuid=4A6FF796-4988-4378-B1F1-61096E7C3A33, name="Linux RAID"
+/dev/nvme0n1p5 : start=    36177920, size=   940595215, type=A19D880F-05FC-4D3B-A006-743F0F84911E, uuid=D5C92629-BCB0-4EC7-A349-7F068165C53F, name="Linux RAID"
+root@mendota:/etc# sfdisk -d /dev/nvme1n1
+label: gpt
+label-id: 6AA58D66-B1ED-46AD-B412-0AACDFCF6CF4
+device: /dev/nvme1n1
+unit: sectors
+first-lba: 34
+last-lba: 976773134
+
+/dev/nvme1n1p1 : start=          34, size=        2014, type=21686148-6449-6E6F-744E-656564454649, uuid=E33C60D8-C925-4D46-9FA8-7E25F4984BFE, name="BIOS boot partition"
+/dev/nvme1n1p2 : start=        2048, size=      524288, type=C12A7328-F81F-11D2-BA4B-00A0C93EC93B, uuid=2B612A39-119D-4759-9922-FA6844F15DEF, name="EFI Backup"
+/dev/nvme1n1p3 : start=      526336, size=     2097152, type=A19D880F-05FC-4D3B-A006-743F0F84911E, uuid=D3D15924-C248-4C26-87F1-4CC7FD202799, name="BOOT"
+/dev/nvme1n1p4 : start=     2623488, size=    33554432, type=A19D880F-05FC-4D3B-A006-743F0F84911E, uuid=4A6FF796-4988-4378-B1F1-61096E7C3A33, name="Linux RAID"
+/dev/nvme1n1p5 : start=    36177920, size=   940595215, type=A19D880F-05FC-4D3B-A006-743F0F84911E, uuid=D5C92629-BCB0-4EC7-A349-7F068165C53F, name="Linux RAID"
+root@mendota:/etc# fdisk -l /dev/md126
+Disk /dev/md126: 448.4 GiB, 481450524672 bytes, 940333056 sectors
+Units: sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+Disklabel type: gpt
+Disk identifier: A2EF1DDF-CC93-48A9-B02E-2B5FCA4FE5C5
+
+Device           Start       End   Sectors  Size Type
+/dev/md126p1      2048 188067839 188065792 89.7G Linux LVM
+/dev/md126p2 188067840 376133631 188065792 89.7G Linux LVM
+/dev/md126p3 376133632 564199423 188065792 89.7G Linux LVM
+/dev/md126p4 564199424 752265215 188065792 89.7G Linux LVM
+/dev/md126p5 752265216 940333022 188067807 89.7G Linux LVM
+root@mendota:/etc# sfdisk -d /dev/md126
+label: gpt
+label-id: A2EF1DDF-CC93-48A9-B02E-2B5FCA4FE5C5
+device: /dev/md126
+unit: sectors
+first-lba: 34
+last-lba: 940333022
+
+/dev/md126p1 : start=        2048, size=   188065792, type=E6D6D379-F507-44C2-A23C-238F2A3DF928, uuid=1FB2977D-8596-488D-9C22-E75EF49556C7, name="Linux LVM"
+/dev/md126p2 : start=   188067840, size=   188065792, type=E6D6D379-F507-44C2-A23C-238F2A3DF928, uuid=0BFFE4D0-C5AD-4CC4-81BA-BFE0DDA19A4E, name="Linux LVM"
+/dev/md126p3 : start=   376133632, size=   188065792, type=E6D6D379-F507-44C2-A23C-238F2A3DF928, uuid=314FD3F1-C75E-4423-9653-DF7DFB85919B, name="Linux LVM"
+/dev/md126p4 : start=   564199424, size=   188065792, type=E6D6D379-F507-44C2-A23C-238F2A3DF928, uuid=46459519-30CF-4991-BE53-C5434AB592CE, name="Linux LVM"
+/dev/md126p5 : start=   752265216, size=   188067807, type=E6D6D379-F507-44C2-A23C-238F2A3DF928, uuid=E45E1F78-82E5-4DF9-A3B1-C065E60A2F99, name="Linux LVM"
+```
+
+*raid*
+
+* md128 is 1G boot raid1 boot.
+* md127 is 32G raid0 Swap.
+* md126 is further partitioned into pvs not all of these are allocate currently (shown above).
+
+content
+```bash
+root@mendota:/etc# mdadm --detail  /dev/md12[6-8]
+/dev/md126:
+        Version : 1.2
+  Creation Time : Fri Feb 23 13:58:17 2018
+     Raid Level : raid1
+     Array Size : 470166528 (448.39 GiB 481.45 GB)
+  Used Dev Size : 470166528 (448.39 GiB 481.45 GB)
+   Raid Devices : 2
+  Total Devices : 2
+    Persistence : Superblock is persistent
+
+  Intent Bitmap : Internal
+
+    Update Time : Fri Apr 27 17:40:24 2018
+          State : clean 
+ Active Devices : 2
+Working Devices : 2
+ Failed Devices : 0
+  Spare Devices : 0
+
+           Name : ubuntu-studio:pvs
+           UUID : bcc75e3f:23f44a6d:5d5f827d:0abdb81a
+         Events : 2122
+
+    Number   Major   Minor   RaidDevice State
+       2     259        6        0      active sync   /dev/nvme0n1p5
+       1     259       11        1      active sync   /dev/nvme1n1p5
+/dev/md127:
+        Version : 1.2
+  Creation Time : Fri Feb 23 13:18:49 2018
+     Raid Level : raid0
+     Array Size : 33521664 (31.97 GiB 34.33 GB)
+   Raid Devices : 2
+  Total Devices : 2
+    Persistence : Superblock is persistent
+
+    Update Time : Fri Feb 23 13:18:49 2018
+          State : clean 
+ Active Devices : 2
+Working Devices : 2
+ Failed Devices : 0
+  Spare Devices : 0
+
+     Chunk Size : 512K
+
+           Name : ubuntu-studio:md4Swap
+           UUID : d8a62d15:0ca90ffe:f14e8026:f2602d52
+         Events : 0
+
+    Number   Major   Minor   RaidDevice State
+       0     259        5        0      active sync   /dev/nvme0n1p4
+       1     259       10        1      active sync   /dev/nvme1n1p4
+/dev/md128:
+        Version : 1.2
+  Creation Time : Fri Feb 23 17:32:45 2018
+     Raid Level : raid1
+     Array Size : 1047552 (1023.00 MiB 1072.69 MB)
+  Used Dev Size : 1047552 (1023.00 MiB 1072.69 MB)
+   Raid Devices : 2
+  Total Devices : 2
+    Persistence : Superblock is persistent
+
+    Update Time : Fri Apr 27 14:36:57 2018
+          State : clean 
+ Active Devices : 2
+Working Devices : 2
+ Failed Devices : 0
+  Spare Devices : 0
+
+           Name : mendota:128  (local to host mendota)
+           UUID : 2eac5173:7b5f5773:c25dfa41:dff66f34
+         Events : 48
+
+    Number   Major   Minor   RaidDevice State
+       0     259        4        0      active sync   /dev/nvme0n1p3
+       1     259        9        1      active sync   /dev/nvme1n1p3
+```
+
+
