@@ -6,7 +6,7 @@ from subprocess import call
 
 xorg_conf = "/etc/X11/xorg.conf"
 last_mode_file = os.environ.get("HOME")+"/.nv-last-metamode"
-nv_cmd = '/usr/bin/nvidia-settings -a CurrentMetaMode="%s"'
+nv_cmd = '/usr/bin/nvidia-settings -a XineramaInfoOrder="%s" -a CurrentMetaMode="%s"'
 
 with file(xorg_conf,'r') as xconf:
     try:
@@ -14,6 +14,16 @@ with file(xorg_conf,'r') as xconf:
                  None].pop().split('"')[-2].split(";")
     except:
         raise KeyError("Could not parse metamodes from xorg.conf")
+
+
+with file(xorg_conf,'r') as xconf:
+    try:
+        xorder = [i for i in xconf.readlines() if re.search('^\s*Option\s+"nvidiaXineramaInfoOrder"', i) is not
+                  None].pop().split('"')[-2]
+    except:
+        raise KeyError("Could not parse nvidiaXineramInfoOrder from xorg.conf")
+
+
 
 if os.path.exists(last_mode_file):
     last_mode = int(file(last_mode_file,'r').read(1))
@@ -32,7 +42,7 @@ else:
     if indx >= len(modes):
         indx = 0
 
-    cmd = nv_cmd % modes[indx]
+    cmd = nv_cmd % (xorder,modes[indx])
     print cmd + "\n"
     call(cmd,env=os.environ,shell=True)
     with open(last_mode_file,'w') as sf:
