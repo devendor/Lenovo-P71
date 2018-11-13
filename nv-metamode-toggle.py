@@ -6,7 +6,7 @@ from subprocess import call
 
 xorg_conf = "/etc/X11/xorg.conf"
 last_mode_file = os.environ.get("HOME")+"/.nv-last-metamode"
-nv_cmd = '/usr/bin/nvidia-settings -a XineramaInfoOrder="%s" -a CurrentMetaMode="%s"'
+nv_cmd = '/usr/bin/nvidia-settings -a XineramaInfoOrder="%s" -a CurrentMetaMode="%s" -a [gpu:0]/GPUPowerMizerMode=%s'
 
 with file(xorg_conf,'r') as xconf:
     try:
@@ -42,7 +42,8 @@ else:
     if indx >= len(modes):
         indx = 0
 
-    cmd = nv_cmd % (xorder,modes[indx])
+    power_mode = "0" if "DFP: NULL" in modes[indx] else "2"
+    cmd = nv_cmd % (xorder,modes[indx], power_mode)
     print cmd + "\n"
     call(cmd,env=os.environ,shell=True)
     with open(last_mode_file,'w') as sf:
