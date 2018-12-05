@@ -459,4 +459,9 @@ Working Devices : 2
        1     259        9        1      active sync   /dev/nvme1n1p3
 ```
 
+## 99-savings
+
+A shell script to toggle power management settings via upower.service from package upower on power
+events. Out of box battery life is dismal. This is at least ok considering the massive computing
+power piled into this model compared to something like a chromebook with excellent battery life.
 

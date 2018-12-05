@@ -1,0 +1,198 @@
+#!/bin/bash
+# A script to agressively toggle power management between high performance and very low power usage.
+# For more information on each of these options, see http://www.lesswatts.org
+#
+# To install:
+#
+# sudo install 99-savings /etc/pm/sleep.d
+# sudo install 99-savings /etc/pm/power.d
+#
+# Nvidia powermizer modes: 0=adaptive, 2=auto, 3=consitent\ perf, 1=max performance
+
+##
+## POWER SAVE OFF
+##
+
+ac_power()
+{
+  ##
+  ## DISK and FILESYSTEMS
+  ##
+
+  # Set the drive to mostly stay awake.  Some may want to change -B 200
+  # to -B 255 to avoid accumulating Load_Cycle_Counts
+  # -S 240 => put in standby after 20 minutes idle
+  # -B 200 => do not permit spindown
+  # -M => not supported by my drive
+  #hdparm -B 200 -S 240 /dev/sda
+
+  # Remount ext3/4 filesystems so the journal commit only happens every 60
+  # seconds.  By default this is 5 but, I prefer to reduce the disk
+  # activity a bit.
+  #mount -o remount,commit=60,atime /
+
+  # Turn off the laptop mode disk optimization
+  #
+  udevadm settle
+  echo 0 > /proc/sys/vm/laptop_mode
+
+  # Set the SATA to max performance
+  echo max_performance > /sys/class/scsi_host/host0/link_power_management_policy
+  echo max_performance > /sys/class/scsi_host/host1/link_power_management_policy
+  echo max_performance > /sys/class/scsi_host/host2/link_power_management_policy
+
+  ##
+  ## NETWORK
+  ##
+
+  # set the wifi to no power savings.
+  #iwconfig wlan0 power off
+
+  ##
+  ## CPU AND MEMORY
+  ##
+
+  # Set kernel dirty page value back to default
+  #echo 10 > /proc/sys/vm/dirty_ratio
+  #echo 5 > /proc/sys/vm/dirty_background_ratio
+
+  # Only wakeup every 60 seconds to see if we need to write dirty pages
+  # By default this is every 5 seconds but, I prefer 60 to reduce disk
+  # activity.
+  #echo 6000 > /proc/sys/vm/dirty_writeback_centisecs
+
+  # Make sure ondemand governor is set
+  #echo ondemand > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+
+  ##
+  ## SOUND AND VIDEO
+  ##
+
+  # Turn off sound card power savings
+
+  echo 0 > /sys/module/snd_hda_intel/parameters/power_save
+  # Enable the webcam driver
+  modprobe uvcvideo
+
+  # nvidia powersavings
+
+  XAUTHORITY=/home/rferguson/.Xauthority DISPLAY=:0.0 /usr/bin/nvidia-settings -a '[gpu:0]/GPUPowerMizerMode=2'
+  XAUTHORITY=/home/rferguson/.Xauthority DISPLAY=:0.0 /usr/bin/xbacklight -set 80
+
+  for i in `ls -d /sys/bus/usb/devices/*/power/` ; do
+    echo 300000 > $i/autosuspend_delay_ms
+    # Force wired keyboard to not sleep.
+    if `grep -q 'PRODUCT=4b4/4009/107' ${i}/../uevent `; then
+        echo on > ${i}/control
+    else
+        echo auto > ${i}/control
+    fi
+  done
+
+  echo 'on' > '/sys/bus/pci/devices/0000:01:00.0/power/control'
+  echo 'on' > '/sys/bus/pci/devices/0000:00:1f.6/power/control'
+  echo 'on' > '/sys/bus/pci/devices/0000:00:17.0/power/control'
+  echo 'on' > '/sys/bus/pci/devices/0000:71:00.0/power/control'
+  echo 'on' > '/sys/bus/pci/devices/0000:00:1f.3/power/control'
+  echo 'on' > '/sys/bus/pci/devices/0000:00:14.0/power/control'
+  echo 'on' > '/sys/bus/pci/devices/0000:04:00.0/power/control'
+
+}
+
+##
+## POWER SAVE ON
+##
+
+battery_power()
+{
+  ##
+  ## DISK and FILESYSTEMS
+  ##
+
+  # Set the disks to aggressively save power.
+  # Some might find these settings too aggressive.  If so, change
+  # "-S 4" to something larger like -S 24 (two minutes) and -B 1 to -B 255.
+  # -S 4 => put in standby after 20 seconds idle
+  # -B 1 => highest degree of power savings
+  # -M => not supported by my drive
+  udevadm settle
+  hdparm -B 1 -S 4 -Y /dev/sda
+
+  # Change ext3/ext4 filesystem settings to reduce disk activity.
+  # noatime => disable updates to a file's access time when the file is read.
+  # commit=600 => Change the commit times to 10 minutes.
+  #mount -o remount,noatime,commit=600 /
+
+  # Set laptop disk write mode
+  echo 5 > /proc/sys/vm/laptop_mode
+
+  # Set SATA to minimum power
+  echo min_power > /sys/class/scsi_host/host0/link_power_management_policy
+  echo min_power > /sys/class/scsi_host/host1/link_power_management_policy
+  echo min_power > /sys/class/scsi_host/host2/link_power_management_policy
+  echo 'auto' > '/sys/bus/pci/devices/0000:01:00.0/power/control'
+  echo 'auto' > '/sys/bus/pci/devices/0000:00:17.0/power/control'
+  echo 'auto' > '/sys/bus/pci/devices/0000:71:00.0/power/control'
+  echo 'auto' > '/sys/bus/pci/devices/0000:00:1f.6/power/control'
+  echo 'auto' > '/sys/bus/pci/devices/0000:00:1f.3/power/control'
+  echo 'auto' > '/sys/bus/pci/devices/0000:00:14.0/power/control'
+  echo 'auto' > '/sys/bus/pci/devices/0000:04:00.0/power/control'
+  #echo '1500' > '/proc/sys/vm/dirty_writeback_centisecs'
+  ##
+  ## NETWORK
+  ##
+
+  # set the wifi to power savings.
+  #iwconfig wlan0 power on
+
+  ##
+  ## CPU AND MEMORY
+  ##
+
+  # Make sure ondemand governor is set
+  echo ondemand > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+
+  # Reduce disk activity by waiting up to 10 minutes before doing writes
+  #echo 90 > /proc/sys/vm/dirty_ratio
+  #echo 1 > /proc/sys/vm/dirty_background_ratio
+  #echo 60000 > /proc/sys/vm/dirty_writeback_centisecs
+
+  ##
+  ## SOUND AND VIDEO
+  ##
+
+  # Set sound card power savings
+  #echo 10 > /sys/module/snd_hda_intel/parameters/power_save
+  echo '1' > '/sys/module/snd_hda_intel/parameters/power_save' 
+  # Remove the webcam driver
+  modprobe -r uvcvideo
+
+  # nvidia powersavings
+  XAUTHORITY=/home/rferguson/.Xauthority DISPLAY=:0.0 /usr/bin/nvidia-settings -a '[gpu:0]/GPUPowerMizerMode=0'
+  XAUTHORITY=/home/rferguson/.Xauthority DISPLAY=:0.0 /usr/bin/xbacklight -set 60
+
+
+  for i in `ls -d /sys/bus/usb/devices/*/power` ; do
+    echo 10000 > ${i}/autosuspend_delay_ms
+    # Force wired keyboard to not sleep.
+    if `grep -q 'PRODUCT=4b4/4009/107' ${i}/../uevent `; then
+        echo on > ${i}/control
+    else
+        echo auto > ${i}/control
+    fi
+
+  done
+  /usr/bin/xbacklight -set 60
+  /sbin/ethtool -s enp0s31f6 wol d
+
+
+}
+
+##
+## APPLY SETTINGS
+##
+
+case "$1" in
+  false) ac_power ;;
+  true) battery_power ;;
+esac
